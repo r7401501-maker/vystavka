@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Модерация — Выставка проектов</title>
+<style>
+:root{--ink:#0b1220;--mut:#465069;--grad:linear-gradient(135deg,#1fa63e 0%,#0cc98f 55%,#2aabee 100%);--gl:rgba(255,255,255,.5);--glb:rgba(255,255,255,.72);--hi:rgba(255,255,255,.95);--sh:0 12px 32px rgba(40,60,110,.14),0 1px 2px rgba(20,30,60,.08);--fill:rgba(20,30,60,.07);--base:#e9eff9;--b1:rgba(56,189,248,.75);--b2:rgba(74,222,128,.6);--ok:#12803a;--bad:#b3261e;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--ink:#f5f7fb;--mut:#a9b2c3;--gl:rgba(255,255,255,.08);--glb:rgba(255,255,255,.16);--hi:rgba(255,255,255,.26);--sh:0 14px 40px rgba(0,0,0,.5);--fill:rgba(255,255,255,.09);--base:#05070d;--b1:rgba(37,99,235,.55);--b2:rgba(16,185,129,.4);--ok:#5be08a;--bad:#ff9a9a;color-scheme:dark}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--base);color:var(--ink);font:500 16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:-10%;z-index:-1;background:radial-gradient(38% 32% at 12% 8%,var(--b1),transparent 70%),radial-gradient(34% 30% at 92% 80%,var(--b2),transparent 70%)}
+:focus-visible{outline:3px solid #2aabee;outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 60px}
+.glass{background:linear-gradient(135deg,var(--hi) -40%,transparent 45%),var(--gl);-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);border:1px solid var(--glb);box-shadow:var(--sh),inset 0 1px 0 var(--hi)}
+h1{font-size:28px;line-height:1.15;letter-spacing:-.03em;margin:8px 0 4px}
+h3{margin:0;font-size:19px;line-height:1.25;letter-spacing:-.015em}
+.mut{color:var(--mut);font-size:14px}
+.bar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:16px}
+.btn{font:inherit;font-weight:600;min-height:46px;padding:10px 18px;border-radius:16px;border:1px solid var(--glb);background:var(--fill);color:var(--ink);cursor:pointer}
+.btn.go{background:var(--grad);color:#fff;border-color:rgba(255,255,255,.45)}
+.btn.bad{color:var(--bad)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn:active{transform:scale(.97)}
+.login{border-radius:28px;padding:22px;margin-top:12vh}
+.login input{width:100%;font:inherit;color:var(--ink);background:var(--fill);border:1px solid var(--glb);border-radius:16px;padding:14px 16px;margin:14px 0}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 14px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;font:inherit;font-weight:600;font-size:15px;color:var(--ink);padding:9px 16px;border-radius:999px;cursor:pointer}
+.tab[aria-pressed="true"]{background:var(--grad);color:#fff;border-color:rgba(255,255,255,.5)}
+.tab small{margin-left:6px;opacity:.75}
+.list{display:grid;gap:12px}
+.item{border-radius:24px;padding:16px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin:6px 0 10px}
+.item p{margin:0 0 8px}
+.kv{font-size:14px;color:var(--mut);word-break:break-word}
+.kv b{color:var(--ink);font-weight:600}
+.kv a{color:inherit}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.acts .btn{flex:1 1 120px}
+.empty{text-align:center;padding:36px 12px;color:var(--mut)}
+#msg{min-height:22px;margin:0 0 10px;font-size:14px;color:var(--bad)}
+#msg.ok{color:var(--ok)}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<section id="gate" class="glass login" hidden>
+  <h1>Модерация</h1>
+  <p class="mut">Введите пароль администратора, чтобы проверять новые проекты.</p>
+  <input id="pw" type="password" autocomplete="current-password" placeholder="Пароль администратора" aria-label="Пароль администратора">
+  <p id="gerr" class="mut" role="alert" style="color:var(--bad);margin:0 0 10px" hidden></p>
+  <button class="btn go" id="enter" style="width:100%">Войти</button>
+</section>
+
+<section id="panel" hidden>
+  <div class="bar">
+    <div><h1>Проверка проектов</h1><span class="mut" id="sum"></span></div>
+    <button class="btn" id="out">Выйти</button>
+  </div>
+  <div class="tabs" id="tabs" role="group" aria-label="Статус проектов"></div>
+  <p id="msg" role="status"></p>
+  <div class="list" id="list"></div>
+</section>
+
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const TABS=[["pending","На рассмотрении"],["approved","Опубликованы"],["rejected","Отклонены"]];
+let pass=sessionStorage.getItem("vt_admin")||"",items=[],tab="pending";
+
+async function api(method,url,body){
+  try{
+    const r=await fetch(url,{method,headers:{"Content-Type":"application/json","x-admin-password":pass},body:body?JSON.stringify(body):undefined});
+    const t=await r.text();let j={};try{j=JSON.parse(t)}catch(e){}
+    return{status:r.status,ok:r.ok,...j};
+  }catch(e){return{status:0,ok:false,error:"Нет связи с сервером"}}
+}
+function say(t,good){const m=$("#msg");m.textContent=t||"";m.className=good?"ok":""}
+const stOf=s=>s.status||"approved";
+
+function paint(){
+  $("#tabs").innerHTML=TABS.map(([k,l])=>'<button class="tab glass" data-k="'+k+'" aria-pressed="'+(k===tab)+'">'+l+'<small>'+items.filter(s=>stOf(s)===k).length+'</small></button>').join("");
+  const n=items.filter(s=>stOf(s)==="pending").length;
+  $("#sum").textContent=n?"Ждут проверки: "+n:"Новых заявок нет";
+  const L=items.filter(s=>stOf(s)===tab).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  $("#list").innerHTML=L.length?L.map(card).join(""):'<div class="empty glass" style="border-radius:24px">'+(tab==="pending"?"Все заявки проверены.":"Здесь пока пусто.")+'</div>';
+}
+function card(s){
+  const link=/^https?:\/\//i.test(s.link||"")?'<div class="kv"><b>Ссылка:</b> <a href="'+esc(s.link)+'" target="_blank" rel="noopener noreferrer">'+esc(s.link)+'</a></div>':"";
+  const when=s.ts?new Date(s.ts).toLocaleString("ru-RU",{dateStyle:"medium",timeStyle:"short"}):"";
+  const st=stOf(s);
+  return '<article class="item glass" data-id="'+esc(s.id)+'"><h3>'+esc(s.name)+'</h3>'+
+    '<div class="meta mut"><span>'+esc(s.cat)+'</span><span>Стадия: '+esc(s.stage)+'</span>'+(when?'<span>'+esc(when)+'</span>':"")+'</div>'+
+    '<p>'+esc(s.pitch)+'</p>'+(s.desc?'<p class="mut">'+esc(s.desc)+'</p>':"")+
+    '<div class="kv"><b>Команда:</b> '+esc(s.founder||"не указана")+'</div>'+
+    '<div class="kv"><b>Контакт:</b> '+esc(s.contact||"не указан")+'</div>'+link+
+    (s.reason?'<div class="kv"><b>Причина отказа:</b> '+esc(s.reason)+'</div>':"")+
+    '<div class="acts">'+
+    (st!=="approved"?'<button class="btn go" data-a="approve">Одобрить</button>':"")+
+    (st==="pending"?'<button class="btn" data-a="reject">Отклонить</button>':"")+
+    (st==="approved"?'<button class="btn" data-a="hide">Снять с выставки</button>':"")+
+    '<button class="btn bad" data-a="del">Удалить</button></div></article>';
+}
+
+async function load(){
+  const r=await api("GET","/api/admin/projects");
+  if(r.status===401||r.status===403){pass="";sessionStorage.removeItem("vt_admin");return false}
+  if(!r.ok){say(r.status===404?"На сервере ещё нет админ-запросов. Подключите их, и страница заработает.":(r.error||"Не удалось загрузить проекты"));return null}
+  items=Array.isArray(r.items)?r.items:[];say("");paint();return true;
+}
+async function act(id,a){
+  const s=items.find(x=>x.id===id);if(!s)return;
+  if(a==="del"){if(!confirm("Удалить проект «"+s.name+"» навсегда?"))return;
+    const r=await api("DELETE","/api/admin/projects/"+encodeURIComponent(id));
+    if(!r.ok)return say(r.error||"Не удалось удалить");
+    items=items.filter(x=>x.id!==id);paint();return say("Проект удалён",true)}
+  let status,reason="";
+  if(a==="approve")status="approved";
+  if(a==="hide")status="pending";
+  if(a==="reject"){status="rejected";const t=prompt("Причина отказа (её увидит автор). Можно оставить пустой:");if(t===null)return;reason=t.trim().slice(0,200)}
+  const r=await api("POST","/api/admin/projects/"+encodeURIComponent(id),{status,reason});
+  if(!r.ok)return say(r.error||"Не удалось сохранить");
+  s.status=status;s.reason=status==="rejected"?reason:"";paint();
+  say(a==="approve"?"Проект опубликован":a==="reject"?"Проект отклонён":"Проект снят с выставки",true);
+}
+
+$("#tabs").onclick=e=>{const b=e.target.closest(".tab");if(b){tab=b.dataset.k;paint()}};
+$("#list").onclick=e=>{const b=e.target.closest("[data-a]");if(!b)return;const c=b.closest(".item");b.disabled=true;act(c.dataset.id,b.dataset.a).finally(()=>{b.disabled=false})};
+$("#out").onclick=()=>{pass="";sessionStorage.removeItem("vt_admin");items=[];show(false)};
+$("#pw").onkeydown=e=>{if(e.key==="Enter")$("#enter").click()};
+$("#enter").onclick=async()=>{
+  const v=$("#pw").value;if(!v)return;pass=v;$("#enter").disabled=true;
+  const ok=await load();$("#enter").disabled=false;
+  if(ok){sessionStorage.setItem("vt_admin",pass);$("#pw").value="";show(true)}
+  else{const g=$("#gerr");g.textContent=ok===false?"Неверный пароль":$("#msg").textContent;g.hidden=false}
+};
+function show(on){$("#gate").hidden=on;$("#panel").hidden=!on;if(!on){$("#gerr").hidden=true;$("#pw").focus()}}
+(async()=>{if(pass&&await load())show(true);else show(false)})();
+</script>
+</body>
+</html>
